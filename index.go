@@ -14,15 +14,18 @@ type Keys struct {
 	columns []string
 }
 
-func Index(kt KeyType, columns ...string) *Keys {
-	return &Keys{KeyType: kt, columns: columns}
+func Index(kt KeyType, column string, columns ...string) Keys {
+	k := Keys{KeyType: kt}
+	k.columns = append(k.columns, column)
+	k.columns = append(k.columns, columns...)
+	return k
 }
 
-func (c *Keys) Enable(db *Table) {
+func (c Keys) Enable(db *Table) {
 	db.index = append(db.index, c)
 }
 
-func (c *Keys) Parse() string {
+func (c Keys) ToStruct() string {
 	if c.KeyType == KTPrimary {
 		return "PRIMARY KEY (" + c.columns[0] + ")"
 	}

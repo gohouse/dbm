@@ -1,10 +1,31 @@
 package dbm
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+	"strings"
+)
 
 type IScheme interface {
 	Enable(*Table)
 	//Parse() string
+}
+type TagOption struct {
+	Name        string
+	IsCamelcase bool
+	IsSnakeCase bool
+}
+
+func Tag(name string) *TagOption {
+	return &TagOption{Name: name}
+}
+func (tg *TagOption) CamelCase() *TagOption {
+	tg.IsCamelcase = true
+	return tg
+}
+func (tg *TagOption) SnakeCase() *TagOption {
+	tg.IsSnakeCase = true
+	return tg
 }
 
 type DBM struct {
@@ -20,16 +41,19 @@ type Table struct {
 	name     string
 	comment  string
 	engine   string
-	fields   []*Column
-	index    []*Keys
+	fields   []Column
+	index    []Keys
 }
 type Tables []Table
 
-func NewTable() *Table {
+func NewTable(name string) *Table {
+	return &Table{name: name}
+}
+func FromDsn(driver, dsn string) *Table {
 	return &Table{}
 }
-func FromSql(arg string) *Table {
-	return &Table{}
+func FromSql(sqls string) *DBM {
+	return NewDBM(NewSql(sqls).Parse())
 }
 func FromFile(arg string) *Table {
 	return &Table{}
@@ -73,9 +97,59 @@ func (db *DBM) Collate(collate string) *DBM {
 	return db
 }
 
+func buildTag(name, field string) string {
+	return fmt.Sprintf(`%s:"%s"`, name, field)
+}
 func (db *DBM) Migrate(driver, dsn string) {}
 func (db *DBM) ToJson(driver string)       {}
-func (db *DBM) ToStruct(driver string)     {}
+func (db *DBM) ToStruct(driver string, tags ...*TagOption) string {
+	if len(tags) == 0 {
+		tags = append(tags, Tag("db"), Tag("json"))
+	} else {
+		index := slices.IndexFunc(tags, func(tagOption *TagOption) bool {
+			return tagOption.Name == "db"
+		})
+		if index == -1 {
+			tags = append([]*TagOption{Tag("db")}, tags[0:]...)
+		} else {
+			if index > 0 && len(tags) > 1 {
+				// 将指定元素移动到切片的第一个位置
+				temp := tags[index]
+				copy(tags[1:], tags[:index])
+				tags[0] = temp
+			}
+		}
+	}
+
+	dr := GetDriver(driver)
+	// 解析列
+	var cols []string
+	for _, col := range db.Table.fields {
+		var sep []string
+		sep = append(sep, ToCamelCase(col.Field.Name, true))
+		sep = append(sep, dr.Db2Go(col.Field.Type))
+		// 处理 tag
+		var tagArr []string
+		for _, tag := range tags {
+			if tag.IsSnakeCase {
+				tagArr = append(tagArr, buildTag(tag.Name, ToSnakeCase(col.Field.Name)))
+			} else if tag.IsCamelcase {
+				tagArr = append(tagArr, buildTag(tag.Name, ToCamelCase(col.Field.Name)))
+			} else {
+				tagArr = append(tagArr, buildTag(tag.Name, col.Field.Name))
+			}
+		}
+		sep = append(sep, fmt.Sprintf("`%s`", strings.Join(tagArr, " ")))
+		if col.Comments != "" {
+			sep = append(sep, fmt.Sprintf(" // %s", col.Comments))
+		}
+		cols = append(cols, strings.Join(sep, " "))
+	}
+
+	// 构建完整sql
+	fmt.Printf("type %s struct {\n\t%s\n}\n", db.Table.name, strings.Join(cols, ",\n\t"))
+	return fmt.Sprintf("type %s struct {\n\t%s\n}\n", db.Table.name, strings.Join(cols, ",\n\t"))
+}
 func (db *DBM) ToSql(driver string) {
 	fmt.Println(GetDriver(driver).ToSql(db.Table))
 }

@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+func init() {
+	Register("mysql", &Mysql{})
+}
+
 var go2db = map[string]string{
 	"int8":      "TINYINT",
 	"int16":     "SMALLINT",
@@ -65,26 +69,94 @@ var db2go = map[string]string{
 	"json":               "json.RawMessage",
 }
 
-type Mysql struct{}
+type Mysql struct {
+	*Table
+}
 
-func (Mysql) Go2Db(t string) string {
+func (*Mysql) Go2Db(t string) string {
 	return go2db[strings.ToLower(t)]
 }
-func (Mysql) Db2Go(t string) string {
+func (*Mysql) Db2Go(t string) string {
 	return db2go[strings.ToLower(t)]
 }
-func (Mysql) ToSql(tab *Table) string {
+
+func (*Mysql) index2sql(c Keys) string {
+	if len(c.columns) == 0 {
+		return ""
+	}
+	idx := strings.Join(c.columns, ",")
+	if c.KeyType == KTPrimary {
+		return fmt.Sprintf("PRIMARY KEY (%s)", idx)
+	}
+	if c.KeyType == KTIndex {
+		return fmt.Sprintf("KEY idx_%s (%s)", strings.Join(c.columns, "_"), idx)
+	}
+	if c.KeyType == KTUnique {
+		return fmt.Sprintf("UNIQUE KEY unq_%s (%s)", strings.Join(c.columns, "_"), idx)
+	}
+	return ""
+}
+func (m *Mysql) column2sql(c Column) string {
+	var sep []string
+	sep = append(sep, c.Field.Name)
+	if c.IsUnsigned {
+		sep = append(sep, "UNSIGNED")
+	}
+	if c.Field.Length > 0 {
+		if c.Field.Type == "enum" {
+			sep = append(sep, fmt.Sprintf("%s(%s)", c.Field.Type, strings.Join(c.Field.Values, ",")))
+		} else if c.Field.Type == "decimal" {
+			sep = append(sep, fmt.Sprintf("%s(%v,%s)", c.Field.Type, c.Field.Length, c.Field.Values[0]))
+		} else {
+			sep = append(sep, fmt.Sprintf("%s(%d)", c.Field.Type, c.Field.Length))
+		}
+	} else {
+		sep = append(sep, c.Field.Type)
+	}
+	if !c.IsNullable {
+		sep = append(sep, "NOT NULL")
+	}
+	if c.IsAutoInc {
+		sep = append(sep, "AUTO_INCREMENT")
+	}
+	if c.DefaultValue != "" {
+		sep = append(sep, fmt.Sprintf("DEFAULT '%s'", c.DefaultValue))
+	}
+	if c.Comments != "" {
+		sep = append(sep, fmt.Sprintf("COMMENT '%s'", c.Comments))
+	}
+	if c.KeyType > 0 {
+		m.Table.index = append(m.Table.index, Index(c.KeyType, c.Field.Name))
+	}
+
+	return strings.Join(sep, " ")
+}
+
+func (*Mysql) charset2sql(c Charsets) string {
+	if c.Charset != "" && c.Collate != "" {
+		return fmt.Sprintf(" DEFAULT CHARSET=%s COLLATE=%s", c.Charset, c.Collate)
+	} else if c.Charset != "" {
+		return fmt.Sprintf(" DEFAULT CHARSET=%s", c.Charset)
+	} else if c.Collate != "" {
+		return fmt.Sprintf(" DEFAULT COLLATE=%s", c.Collate)
+	} else {
+		return ""
+	}
+}
+func (m *Mysql) ToSql(tab *Table) string {
+	m.Table = tab
 	// 完成 mysql sql 语句的解析,给出完整解析过程
 	// 解析列
 	var cols []string
 	for _, col := range tab.fields {
-		cols = append(cols, col.Parse())
+		cols = append(cols, m.column2sql(col))
 	}
 	// 解析索引
 	var indexs []string
 	for _, index := range tab.index {
-		indexs = append(indexs, index.Parse())
+		indexs = append(indexs, m.index2sql(index))
 	}
+	// 解析表配置
 	engin := ""
 	if tab.engine != "" {
 		engin = fmt.Sprintf(" ENGIN=%s", tab.engine)
@@ -95,9 +167,5 @@ func (Mysql) ToSql(tab *Table) string {
 	}
 	// 构建完整sql
 	tpl := "CREATE TABLE IF NOT EXISTS %s (\n\t%s\n\t%s\n)%s%s%s;"
-	return fmt.Sprintf(tpl, tab.name, strings.Join(cols, ",\n\t"), strings.Join(indexs, ",\n\t"), engin, tab.Charsets.Parse2table(), comment)
-}
-
-func init() {
-	Register("mysql", &Mysql{})
+	return fmt.Sprintf(tpl, tab.name, strings.Join(cols, ",\n\t"), strings.Join(indexs, ",\n\t"), engin, m.charset2sql(tab.Charsets), comment)
 }

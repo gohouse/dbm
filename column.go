@@ -10,7 +10,7 @@ type Charsets struct {
 	Collate string
 }
 
-func (c Charsets) Parse2table() string {
+func (c Charsets) ToStruct() string {
 	if c.Charset != "" && c.Collate != "" {
 		return fmt.Sprintf(" DEFAULT CHARSET=%s COLLATE=%s", c.Charset, c.Collate)
 	} else if c.Charset != "" {
@@ -25,11 +25,12 @@ func (c Charsets) Parse2table() string {
 type Column struct {
 	Field        *Field
 	Charsets     *Charsets
-	unsigned     bool
-	nullable     bool
-	isAutoInc    bool
-	comment      string
-	defaultValue string
+	IsUnsigned   bool
+	IsNullable   bool
+	IsAutoInc    bool
+	KeyType      KeyType
+	Comments     string
+	DefaultValue string
 }
 
 func NewColumn(col *Field) *Column {
@@ -43,27 +44,43 @@ func (c *Column) Nullable(b ...bool) *Column {
 	if len(b) > 0 {
 		tmp = b[0]
 	}
-	c.nullable = tmp
+	c.IsNullable = tmp
 	return c
 }
 func (c *Column) Default(value any) *Column {
-	c.defaultValue = fmt.Sprint(value)
+	c.DefaultValue = fmt.Sprint(value)
 	return c
 }
 func (c *Column) Unsigned() *Column {
-	c.unsigned = true
+	c.IsUnsigned = true
 	return c
 }
 func (c *Column) AutoIncrement(b ...bool) *Column {
 	if len(b) > 0 {
-		c.isAutoInc = b[0]
+		c.IsAutoInc = b[0]
 	} else {
-		c.isAutoInc = true
+		c.IsAutoInc = true
 	}
 	return c
 }
 func (c *Column) Comment(comment string) *Column {
-	c.comment = comment
+	c.Comments = comment
+	return c
+}
+func (c *Column) Primary() *Column {
+	c.KeyType = KTPrimary
+	return c
+}
+func (c *Column) Unique() *Column {
+	c.KeyType = KTUnique
+	return c
+}
+func (c *Column) Fulltext() *Column {
+	c.KeyType = KTFulltext
+	return c
+}
+func (c *Column) Index() *Column {
+	c.KeyType = KTIndex
 	return c
 }
 
@@ -77,13 +94,13 @@ func (c *Column) Collate(collate string) *Column {
 }
 
 func (c *Column) Enable(db *Table) {
-	db.fields = append(db.fields, c)
+	db.fields = append(db.fields, *c)
 }
 
-func (c *Column) Parse() string {
+func (c *Column) ToStruct() string {
 	var sep []string
 	sep = append(sep, c.Field.Name)
-	if c.unsigned {
+	if c.IsUnsigned {
 		sep = append(sep, "UNSIGNED")
 	}
 	if c.Field.Length > 0 {
@@ -97,17 +114,17 @@ func (c *Column) Parse() string {
 	} else {
 		sep = append(sep, c.Field.Type)
 	}
-	if !c.nullable {
+	if !c.IsNullable {
 		sep = append(sep, "NOT NULL")
 	}
-	if c.isAutoInc {
+	if c.IsAutoInc {
 		sep = append(sep, "AUTO_INCREMENT")
 	}
-	if c.defaultValue != "" {
-		sep = append(sep, fmt.Sprintf("DEFAULT '%s'", c.defaultValue))
+	if c.DefaultValue != "" {
+		sep = append(sep, fmt.Sprintf("DEFAULT '%s'", c.DefaultValue))
 	}
-	if c.comment != "" {
-		sep = append(sep, fmt.Sprintf("COMMENT '%s'", c.comment))
+	if c.Comments != "" {
+		sep = append(sep, fmt.Sprintf("COMMENT '%s'", c.Comments))
 	}
 
 	return strings.Join(sep, " ")

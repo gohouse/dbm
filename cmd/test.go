@@ -3,7 +3,7 @@ package main
 import "github.com/gohouse/dbm"
 
 func main() {
-	dbm.NewTable().
+	dbm.NewTable("user").
 		Create(
 			dbm.Col("id").Int().AutoIncrement(),
 			dbm.Col("name").Int(),
