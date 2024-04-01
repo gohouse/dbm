@@ -86,7 +86,11 @@ func (db *Table) ToStruct(driver string, tags ...*TagOption) string {
 			} else if tag.IsCamelcase {
 				tagArr = append(tagArr, buildTag(tag.Name, ToCamelCase(col.Field.Name)))
 			} else {
-				tagArr = append(tagArr, buildTag(tag.Name, col.Field.Name))
+				if strings.ToLower(col.Field.Name) == "id" {
+					tagArr = append(tagArr, buildTag(tag.Name, fmt.Sprintf("%s,pk",col.Field.Name)))
+				} else {
+					tagArr = append(tagArr, buildTag(tag.Name, col.Field.Name))
+				}
 			}
 		}
 		sep = append(sep, fmt.Sprintf("`%s`", strings.Join(tagArr, " ")))
