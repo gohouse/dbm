@@ -94,7 +94,7 @@ func (c *Column) Collate(collate string) *Column {
 }
 
 func (c *Column) Enable(db *Table) {
-	db.fields = append(db.fields, *c)
+	db.Fields = append(db.Fields, *c)
 }
 
 func (c *Column) ToStruct() string {

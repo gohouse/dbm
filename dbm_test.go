@@ -1,6 +1,9 @@
 package dbm
 
-import "testing"
+import (
+	_ "github.com/go-sql-driver/mysql"
+	"testing"
+)
 
 type User struct {
 	ID int64 `db:"id" json:"id" scheme:"int(8),comment(fsdf\"df\"),default(0),nullable"`
@@ -10,7 +13,7 @@ type UserDto struct {
 }
 
 func TestNewDBM(t *testing.T) {
-	tab := NewTable("user").
+	NewTable("user").
 		Create(
 			Col("id").Int().AutoIncrement().Primary(),
 			Col("name").Int().Index(),
@@ -24,13 +27,22 @@ func TestNewDBM(t *testing.T) {
 		).
 		Engine("InnoDB").
 		Charset("utf8mb4").
-		Comment("测试表")
+		Comment("测试表").
+		ToSql("mysql")
 	//Migrate("mysql", "")
-	tab.ToSql("mysql")
-	tab.ToStruct("mysql")
+	//tab.ToSql("mysql")
+	//tab.ToStruct("mysql")
 }
 
 func TestFromSql(t *testing.T) {
 	FromSql("CREATE TABLE users (\n    `user_id` INT AUTO_INCREMENT PRIMARY KEY,\n    username VARCHAR(50),\n    KEY idx_username_email (username, email)\n);").
-		ToStruct("mysql", Tag("json").CamelCase())
+		TryToStructToSingleFile("", "mysql", Tag("json").CamelCase())
+}
+
+func TestFromDsn(t *testing.T) {
+	//filePath := "tmp/test-struct.go"
+	filePath := "tmp/tmp2"
+	FromDsn("mysql", "root:123456@tcp(192.168.0.41:3306)/goapi?charset=utf8mb4&parseTime=true").
+		TryToStructToSingleFile(filePath, "mysql", Tag("json").CamelCase())
+	//TryToStructToPath(filePath, "mysql", Tag("json").CamelCase())
 }

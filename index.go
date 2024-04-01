@@ -22,7 +22,7 @@ func Index(kt KeyType, column string, columns ...string) Keys {
 }
 
 func (c Keys) Enable(db *Table) {
-	db.index = append(db.index, c)
+	db.Index = append(db.Index, c)
 }
 
 func (c Keys) ToStruct() string {

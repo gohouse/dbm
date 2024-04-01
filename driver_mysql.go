@@ -74,10 +74,16 @@ type Mysql struct {
 }
 
 func (*Mysql) Go2Db(t string) string {
-	return go2db[strings.ToLower(t)]
+	if v, ok := go2db[strings.ToLower(t)]; ok {
+		return v
+	}
+	return "any"
 }
 func (*Mysql) Db2Go(t string) string {
-	return db2go[strings.ToLower(t)]
+	if v, ok := db2go[strings.ToLower(t)]; ok {
+		return v
+	}
+	return "any"
 }
 
 func (*Mysql) index2sql(c Keys) string {
@@ -126,7 +132,7 @@ func (m *Mysql) column2sql(c Column) string {
 		sep = append(sep, fmt.Sprintf("COMMENT '%s'", c.Comments))
 	}
 	if c.KeyType > 0 {
-		m.Table.index = append(m.Table.index, Index(c.KeyType, c.Field.Name))
+		m.Table.Index = append(m.Table.Index, Index(c.KeyType, c.Field.Name))
 	}
 
 	return strings.Join(sep, " ")
@@ -148,24 +154,24 @@ func (m *Mysql) ToSql(tab *Table) string {
 	// 完成 mysql sql 语句的解析,给出完整解析过程
 	// 解析列
 	var cols []string
-	for _, col := range tab.fields {
+	for _, col := range tab.Fields {
 		cols = append(cols, m.column2sql(col))
 	}
 	// 解析索引
 	var indexs []string
-	for _, index := range tab.index {
+	for _, index := range tab.Index {
 		indexs = append(indexs, m.index2sql(index))
 	}
 	// 解析表配置
 	engin := ""
-	if tab.engine != "" {
-		engin = fmt.Sprintf(" ENGIN=%s", tab.engine)
+	if tab.Engines != "" {
+		engin = fmt.Sprintf(" ENGIN=%s", tab.Engines)
 	}
 	comment := ""
-	if tab.comment != "" {
-		comment = fmt.Sprintf(" COMMENT='%s'", tab.comment)
+	if tab.Comments != "" {
+		comment = fmt.Sprintf(" COMMENT='%s'", tab.Comments)
 	}
 	// 构建完整sql
 	tpl := "CREATE TABLE IF NOT EXISTS %s (\n\t%s\n\t%s\n)%s%s%s;"
-	return fmt.Sprintf(tpl, tab.name, strings.Join(cols, ",\n\t"), strings.Join(indexs, ",\n\t"), engin, m.charset2sql(tab.Charsets), comment)
+	return fmt.Sprintf(tpl, tab.Name, strings.Join(cols, ",\n\t"), strings.Join(indexs, ",\n\t"), engin, m.charset2sql(tab.Charsets), comment)
 }
