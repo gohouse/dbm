@@ -30,17 +30,15 @@ func (tg *TagOption) SnakeCase() *TagOption {
 	return tg
 }
 
-type DBM struct {
-	Tables      []*Table
-	packageName string
+type DBSource struct {
+	*sql.DB
 }
 
-func NewDBM(tabs ...*Table) *DBM {
-	return &DBM{Tables: tabs}
+func NewDBSource(db *sql.DB) *DBSource {
+	return &DBSource{db}
 }
-
-func FromDB(db *sql.DB) (res *DBM) {
-	res = NewDBM()
+func (db *DBSource) All() *DBM {
+	res := NewDBM()
 	query, err := db.Query("show tables")
 	if err != nil {
 		panic(err.Error())
@@ -58,9 +56,29 @@ func FromDB(db *sql.DB) (res *DBM) {
 
 		res.Tables = append(res.Tables, fromSql(val))
 	}
-	return
+	return res
 }
-func FromDsn(driver, dsn string) (res *DBM) {
+func (db *DBSource) Table(name string) *DBM {
+	var tab, val string
+	if err := db.QueryRow(fmt.Sprintf("show create table %s", name)).Scan(&tab, &val); err != nil {
+		panic(err.Error())
+	}
+	return NewDBM(fromSql(val))
+}
+
+type DBM struct {
+	Tables      []*Table
+	packageName string
+}
+
+func NewDBM(tabs ...*Table) *DBM {
+	return &DBM{Tables: tabs}
+}
+
+func FromDB(db *sql.DB) (res *DBSource) {
+	return NewDBSource(db)
+}
+func FromDsn(driver, dsn string) (res *DBSource) {
 	db, err := sql.Open(driver, dsn)
 	if err != nil {
 		panic(err.Error())

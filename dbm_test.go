@@ -42,8 +42,8 @@ func TestFromSql(t *testing.T) {
 func TestFromDsn(t *testing.T) {
 	filePath := "tmp/test-struct.go"
 	//filePath := "tmp/tmp2"
-	FromDsn("mysql", "root:123456@tcp(192.168.0.41:3306)/goapi?charset=utf8mb4&parseTime=true").SetPackageName("dao").
-		//TryToStructToSingleFile(filePath, "mysql", Tag("json").CamelCase())
-		ToStructToSingleFile(filePath, "mysql", Tag("json").CamelCase())
-		//ToStructToPath(filePath, "mysql", Tag("json").CamelCase())
+	FromDsn("mysql", "root:123456@tcp(192.168.0.41:3306)/goapi?charset=utf8mb4&parseTime=true").Table("config").SetPackageName("dao").
+		TryToStructToSingleFile(filePath, "mysql", Tag("json").CamelCase())
+	//ToStructToSingleFile(filePath, "mysql", Tag("json").CamelCase())
+	//ToStructToPath(filePath, "mysql", Tag("json").CamelCase())
 }
