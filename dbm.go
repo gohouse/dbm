@@ -31,7 +31,8 @@ func (tg *TagOption) SnakeCase() *TagOption {
 }
 
 type DBM struct {
-	Tables []*Table
+	Tables      []*Table
+	packageName string
 }
 
 func NewDBM(tabs ...*Table) *DBM {
@@ -85,6 +86,10 @@ func FromJson(arg string) *Table {
 func buildTag(name, field string) string {
 	return fmt.Sprintf(`%s:"%s"`, name, field)
 }
+func (db *DBM) SetPackageName(pack string) *DBM {
+	db.packageName = pack
+	return db
+}
 func (db *DBM) Migrate(driver, dsn string) {}
 func (db *DBM) ToJson(driver string)       {}
 func (db *DBM) TryToStructToSingleFile(filename, driver string, tags ...*TagOption) {
@@ -96,7 +101,11 @@ func (db *DBM) TryToStructToSingleFile(filename, driver string, tags ...*TagOpti
 }
 func (db *DBM) ToStructToSingleFile(filename, driver string, tags ...*TagOption) {
 	file, _ := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND|os.O_TRUNC, 0666)
-	fmt.Fprintln(file, "package main")
+	var pack = db.packageName
+	if pack == "" {
+		pack = "model"
+	}
+	fmt.Fprintln(file, "package "+pack)
 	var res string
 	for _, dm := range db.Tables { // 如果有引入 time.Time, 则需要引入 time 包
 		structContent := dm.ToStruct(driver, tags...)
@@ -122,7 +131,11 @@ func (db *DBM) ToStructToPath(filePath, driver string, tags ...*TagOption) {
 	for _, dm := range db.Tables { // 如果有引入 time.Time, 则需要引入 time 包
 		var filename = fmt.Sprintf("%s/%s.go", strings.TrimSuffix(filePath, "/"), ToCamelCase(dm.Name, true))
 		file, _ := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND|os.O_TRUNC, 0666)
-		fmt.Fprintln(file, "package main")
+		var pack = db.packageName
+		if pack == "" {
+			pack = "model"
+		}
+		fmt.Fprintln(file, "package "+pack)
 		var res string
 		structContent := dm.ToStruct(driver, tags...)
 
