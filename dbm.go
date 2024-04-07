@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+var FIELD_PRESET = map[string]string {
+	"id": "ID",
+	"ip": "IP",
+}
+
 type IScheme interface {
 	Enable(*Table)
 	//Parse() string

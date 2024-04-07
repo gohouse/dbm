@@ -76,7 +76,11 @@ func (db *Table) ToStruct(driver string, tags ...*TagOption) string {
 	var cols []string
 	for _, col := range db.Fields {
 		var sep []string
-		sep = append(sep, ToCamelCase(col.Field.Name, true))
+		if v, ok := FIELD_PRESET[strings.ToLower(col.Field.Name)]; ok {
+			sep = append(sep, v)
+		} else {
+			sep = append(sep, ToCamelCase(col.Field.Name, true))
+		}
 		sep = append(sep, dr.Db2Go(col.Field.Type))
 		// 处理 tag
 		var tagArr []string
@@ -87,7 +91,7 @@ func (db *Table) ToStruct(driver string, tags ...*TagOption) string {
 				tagArr = append(tagArr, buildTag(tag.Name, ToCamelCase(col.Field.Name)))
 			} else {
 				if strings.ToLower(col.Field.Name) == "id" {
-					tagArr = append(tagArr, buildTag(tag.Name, fmt.Sprintf("%s,pk",col.Field.Name)))
+					tagArr = append(tagArr, buildTag(tag.Name, fmt.Sprintf("%s,pk", col.Field.Name)))
 				} else {
 					tagArr = append(tagArr, buildTag(tag.Name, col.Field.Name))
 				}
