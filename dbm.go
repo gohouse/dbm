@@ -3,12 +3,13 @@ package dbm
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
 )
 
-var FIELD_PRESET = map[string]string {
+var FIELD_PRESET = map[string]string{
 	"id": "ID",
 	"ip": "IP",
 }
@@ -55,7 +56,8 @@ func (db *DBSource) All() *DBM {
 		}
 
 		var tab, val string
-		if err = db.QueryRow(fmt.Sprintf("show create table %s", table)).Scan(&tab, &val); err != nil {
+		slog.Debug(fmt.Sprintf("show create table `%s`", table))
+		if err = db.QueryRow(fmt.Sprintf("show create table `%s`", table)).Scan(&tab, &val); err != nil {
 			panic(err.Error())
 		}
 
