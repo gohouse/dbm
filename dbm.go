@@ -115,8 +115,6 @@ func (db *DBM) SetPackageName(pack string) *DBM {
 	db.packageName = pack
 	return db
 }
-func (db *DBM) Migrate(driver, dsn string) {}
-func (db *DBM) ToJson(driver string)       {}
 func (db *DBM) TryToStructToSingleFile(filename, driver string, tags ...*TagOption) {
 	for _, dm := range db.Tables { // 如果有引入 time.Time, 则需要引入 time 包
 		structContent := dm.ToStruct(driver, tags...)
@@ -151,7 +149,6 @@ func (db *DBM) ToStructToSingleFile(filename, driver string, tags ...*TagOption)
 	cmd := exec.Command("gofmt", "-w", filename)
 	cmd.Run()
 }
-
 func (db *DBM) ToStructToPath(filePath, driver string, tags ...*TagOption) {
 	for _, dm := range db.Tables { // 如果有引入 time.Time, 则需要引入 time 包
 		var filename = fmt.Sprintf("%s/%s.go", strings.TrimSuffix(filePath, "/"), ToCamelCase(dm.Name, true))
@@ -181,5 +178,6 @@ func (db *DBM) ToStructToPath(filePath, driver string, tags ...*TagOption) {
 	}
 }
 func (db *DBM) ToSql(driver string) {
-
 }
+func (db *DBM) Migrate(driver, dsn string) {}
+func (db *DBM) ToJson(driver string)       {}
